@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+.expo/
+
+# Environment files — NEVER commit secrets
+.env
+.env.local
+.env.production
+
+# Logs
+*.log
+npm-debug.log*
+
+# Build outputs
+dist/
+build/
+android/
+ios/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.backup

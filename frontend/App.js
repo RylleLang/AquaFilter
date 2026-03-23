@@ -1,5 +1,12 @@
 import React, { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
+
+// Suppress known Expo Go SDK 53+ limitation — remote push not supported in Expo Go
+const _origError = console.error;
+console.error = (...args) => {
+  if (typeof args[0] === 'string' && args[0].includes('expo-notifications') && args[0].includes('Expo Go')) return;
+  _origError(...args);
+};
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFonts } from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';

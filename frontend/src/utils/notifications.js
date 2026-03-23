@@ -36,8 +36,15 @@ export const registerForPushNotifications = async () => {
     });
   }
 
-  const token = (await Notifications.getExpoPushTokenAsync()).data;
-  return token;
+  // Remote push tokens are not supported in Expo Go SDK 53+
+  // They work in production/development builds only
+  try {
+    const token = (await Notifications.getExpoPushTokenAsync()).data;
+    return token;
+  } catch {
+    console.log('Push token unavailable in Expo Go — use a development build for remote notifications.');
+    return null;
+  }
 };
 
 export const sendLocalNotification = async (title, body, data = {}) => {

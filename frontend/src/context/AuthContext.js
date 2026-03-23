@@ -8,6 +8,12 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const register = async (name, email, password) => {
+    const { data } = await authAPI.register(name, email, password);
+    await storage.setItem('authToken', data.token);
+    setUser(data.user);
+  };
+
   // Rehydrate session on app launch
   useEffect(() => {
     const rehydrate = async () => {
@@ -38,7 +44,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, register }}>
       {children}
     </AuthContext.Provider>
   );

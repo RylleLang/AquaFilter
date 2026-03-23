@@ -17,7 +17,7 @@ const C = {
 };
 
 export default function LoginScreen() {
-  const { login } = useAuth();
+  const { login, register } = useAuth();
   const [mode, setMode] = useState('login'); // 'login' | 'register'
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [showPass, setShowPass] = useState(false);
@@ -33,7 +33,11 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      await login(form.email.trim().toLowerCase(), form.password);
+      if (mode === 'register') {
+        await register(form.name, form.email.trim().toLowerCase(), form.password);
+      } else {
+        await login(form.email.trim().toLowerCase(), form.password);
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Authentication failed. Check credentials.');
     } finally {

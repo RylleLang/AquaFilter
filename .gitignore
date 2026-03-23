@@ -24,3 +24,6 @@ Thumbs.db
 # Editor
 .vscode/
 *.backup
+
+# Claude Code
+.claude/

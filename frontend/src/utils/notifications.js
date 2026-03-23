@@ -1,9 +1,20 @@
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
-import { Platform } from 'react-native';
+import Constants from 'expo-constants';
+
+// expo-notifications remote push was removed from Expo Go SDK 53+.
+// Only load the module in production/development builds.
+const isExpoGo = Constants.appOwnership === 'expo';
+
+const getNotifications = () => {
+  if (isExpoGo) return null;
+  return require('expo-notifications');
+};
 
 export const registerForPushNotifications = async () => {
-  // Must be called inside a function — NOT at module level
+  const Notifications = getNotifications();
+  if (!Notifications) return null;
+
+  const Device = require('expo-device');
+
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowAlert: true,
@@ -16,17 +27,13 @@ export const registerForPushNotifications = async () => {
 
   const { status: existing } = await Notifications.getPermissionsAsync();
   let finalStatus = existing;
-
   if (existing !== 'granted') {
     const { status } = await Notifications.requestPermissionsAsync();
     finalStatus = status;
   }
+  if (finalStatus !== 'granted') return null;
 
-  if (finalStatus !== 'granted') {
-    console.warn('Push notification permission denied');
-    return null;
-  }
-
+  const { Platform } = require('react-native');
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('aquafilter', {
       name: 'AquaFilter Alerts',
@@ -36,48 +43,28 @@ export const registerForPushNotifications = async () => {
     });
   }
 
-  // Remote push tokens are not supported in Expo Go SDK 53+
-  // They work in production/development builds only
   try {
     const token = (await Notifications.getExpoPushTokenAsync()).data;
     return token;
   } catch {
-    console.log('Push token unavailable in Expo Go — use a development build for remote notifications.');
     return null;
   }
 };
 
 export const sendLocalNotification = async (title, body, data = {}) => {
+  const Notifications = getNotifications();
+  if (!Notifications) return;
   await Notifications.scheduleNotificationAsync({
     content: { title, body, data, sound: true },
-    trigger: null, // immediate
+    trigger: null,
   });
 };
 
-// Pre-built notification templates
 export const notify = {
-  cycleComplete: () =>
-    sendLocalNotification(
-      'Filtration Complete ✅',
-      'The laundry wastewater filtration cycle has finished.'
-    ),
-  filterReplace: (cyclesLeft) =>
-    sendLocalNotification(
-      'Filter Replacement Required ⚠️',
-      `Banana peel bio-adsorbent filter needs replacement. ${cyclesLeft} cycle(s) remaining.`
-    ),
-  deviceOn: () =>
-    sendLocalNotification('AquaFilter ON 💧', 'Filtration device is now active.'),
-  deviceOff: () =>
-    sendLocalNotification('AquaFilter OFF', 'Filtration device has been switched off.'),
-  highTurbidity: (ntu) =>
-    sendLocalNotification(
-      'High Turbidity Alert ⚠️',
-      `Turbidity reading: ${ntu} NTU — exceeds safe threshold.`
-    ),
-  phAlert: (ph) =>
-    sendLocalNotification(
-      'pH Level Alert ⚠️',
-      `pH reading: ${ph} — outside acceptable range (6.5–8.5).`
-    ),
+  cycleComplete: () => sendLocalNotification('Filtration Complete ✅', 'The laundry wastewater filtration cycle has finished.'),
+  filterReplace: (cyclesLeft) => sendLocalNotification('Filter Replacement Required ⚠️', `Banana peel bio-adsorbent filter needs replacement. ${cyclesLeft} cycle(s) remaining.`),
+  deviceOn: () => sendLocalNotification('AquaFilter ON 💧', 'Filtration device is now active.'),
+  deviceOff: () => sendLocalNotification('AquaFilter OFF', 'Filtration device has been switched off.'),
+  highTurbidity: (ntu) => sendLocalNotification('High Turbidity Alert ⚠️', `Turbidity reading: ${ntu} NTU — exceeds safe threshold.`),
+  phAlert: (ph) => sendLocalNotification('pH Level Alert ⚠️', `pH reading: ${ph} — outside acceptable range (6.5–8.5).`),
 };

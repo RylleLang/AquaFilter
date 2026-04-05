@@ -8,20 +8,10 @@ const logger = require('../config/logger');
  */
 exports.createRecord = async (req, res) => {
   const { deviceId } = req.params;
-  const {
-    type,
-    performedAt,
-    cycleCountAtService,
-    filterStage,
-    notes,
-    calibrationData,
-  } = req.body;
+  const { type, performedAt, cycleCountAtService, filterStage, notes, calibrationData } = req.body;
 
-  if (!type || cycleCountAtService === undefined) {
-    return res.status(400).json({
-      success: false,
-      message: 'type and cycleCountAtService are required',
-    });
+  if (!type) {
+    return res.status(400).json({ success: false, message: 'type is required' });
   }
 
   try {
@@ -29,14 +19,13 @@ exports.createRecord = async (req, res) => {
       deviceId,
       type,
       performedAt: performedAt ? new Date(performedAt) : new Date(),
-      cycleCountAtService,
+      cycleCountAtService: cycleCountAtService || 0,
       filterStage: filterStage || null,
       performedBy: req.user._id,
       notes: notes || '',
       calibrationData: calibrationData || {},
     });
 
-    // Reset filter health counter on replacement
     if (type === 'filter_replacement') {
       await resetFilterHealth(deviceId);
       logger.info(`Filter replaced on device ${deviceId} — health reset to 100%`);
@@ -81,6 +70,25 @@ exports.getRecords = async (req, res) => {
   } catch (err) {
     logger.error(`getRecords error: ${err.message}`);
     res.status(500).json({ success: false, message: 'Failed to fetch maintenance records' });
+  }
+};
+
+/**
+ * PATCH /api/maintenance/:deviceId/:id/acknowledge
+ */
+exports.acknowledgeRecord = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const record = await MaintenanceRecord.findByIdAndUpdate(
+      id,
+      { acknowledged: true },
+      { new: true }
+    ).lean();
+    if (!record) return res.status(404).json({ success: false, message: 'Record not found' });
+    res.json({ success: true, data: record });
+  } catch (err) {
+    logger.error(`acknowledgeRecord error: ${err.message}`);
+    res.status(500).json({ success: false, message: 'Failed to acknowledge record' });
   }
 };
 

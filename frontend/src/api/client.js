@@ -55,6 +55,7 @@ export const deviceAPI = {
 export const maintenanceAPI = {
   getAll: () => client.get(`/maintenance/${DEVICE_ID}`),
   create: (record) => client.post(`/maintenance/${DEVICE_ID}`, record),
+  acknowledge: (id) => client.patch(`/maintenance/${DEVICE_ID}/${id}/acknowledge`),
 };
 
 export default client;

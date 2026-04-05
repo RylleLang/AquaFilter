@@ -10,19 +10,19 @@ import { useDevice } from '../context/DeviceContext';
 import { useTheme } from '../context/ThemeContext';
 
 const TYPE_ICONS = {
-  filter_replace: 'leaf',
-  cleaning: 'sparkles',
-  inspection: 'search',
+  filter_replacement: 'leaf',
+  filter_cleaning: 'sparkles',
+  system_inspection: 'search',
   repair: 'build',
   other: 'ellipsis-horizontal',
 };
 
-const TYPES = ['filter_replace', 'cleaning', 'inspection', 'repair', 'other'];
+const TYPES = ['filter_replacement', 'filter_cleaning', 'system_inspection', 'repair', 'other'];
 
 const RecordCard = ({ record, onAck, C }) => {
   const TYPE_COLORS = {
-    filter_replace: C.warning, cleaning: C.primary,
-    inspection: C.success, repair: C.danger, other: C.muted,
+    filter_replacement: C.warning, filter_cleaning: C.primary,
+    system_inspection: C.success, repair: C.danger, other: C.muted,
   };
   const color = TYPE_COLORS[record.type] || C.muted;
   const icon = TYPE_ICONS[record.type] || 'ellipsis-horizontal';
@@ -42,7 +42,7 @@ const RecordCard = ({ record, onAck, C }) => {
             <Ionicons name={icon} size={15} color={color} />
           </View>
           <Text style={{ fontSize: 12, fontWeight: '800', color, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-            {record.type.replace('_', ' ')}
+            {record.type.replace(/_/g, ' ')}
           </Text>
         </View>
         {!record.acknowledged ? (
@@ -71,19 +71,19 @@ export default function MaintenanceScreen() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [form, setForm] = useState({ type: 'filter_replace', notes: '' });
+  const [form, setForm] = useState({ type: 'filter_replacement', notes: '' });
   const [submitting, setSubmitting] = useState(false);
 
   const TYPE_COLORS = {
-    filter_replace: C.warning, cleaning: C.primary,
-    inspection: C.success, repair: C.danger, other: C.muted,
+    filter_replacement: C.warning, filter_cleaning: C.primary,
+    system_inspection: C.success, repair: C.danger, other: C.muted,
   };
 
   const fetchRecords = useCallback(async () => {
     setLoading(true);
     try {
       const { data } = await maintenanceAPI.getAll();
-      setRecords(data.records || []);
+      setRecords(data.data || []);
     } catch (err) {
       console.warn('Maintenance fetch error:', err.message);
     } finally {
@@ -107,7 +107,7 @@ export default function MaintenanceScreen() {
     setSubmitting(true);
     try {
       const { data } = await maintenanceAPI.create(form);
-      setRecords((prev) => [data.record, ...prev]);
+      setRecords((prev) => [data.data, ...prev]);
       setModalVisible(false);
       setForm({ type: 'filter_replace', notes: '' });
     } catch {
@@ -233,7 +233,7 @@ export default function MaintenanceScreen() {
                 >
                   <Ionicons name={TYPE_ICONS[t]} size={14} color={form.type === t ? TYPE_COLORS[t] : C.muted} />
                   <Text style={{ color: form.type === t ? TYPE_COLORS[t] : C.muted, fontSize: 12, fontWeight: '600', textTransform: 'capitalize' }}>
-                    {t.replace('_', ' ')}
+                    {t.replace(/_/g, ' ')}
                   </Text>
                 </TouchableOpacity>
               ))}

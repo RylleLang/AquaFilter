@@ -18,11 +18,11 @@ const MaintenanceRecordSchema = new mongoose.Schema(
     type: {
       type: String,
       enum: [
-        'filter_replacement', // Banana peel bio-adsorbent replaced
-        'filter_cleaning',    // Partial cleaning, not full replacement
-        'sensor_calibration', // pH/turbidity/TDS sensor re-calibrated
-        'system_inspection',  // General inspection
-        'repair',             // Hardware repair
+        'filter_replacement',
+        'filter_cleaning',
+        'sensor_calibration',
+        'system_inspection',
+        'repair',
         'other',
       ],
       required: true,
@@ -37,7 +37,12 @@ const MaintenanceRecordSchema = new mongoose.Schema(
     // Cumulative cycle count at the time of this maintenance event
     cycleCountAtService: {
       type: Number,
-      required: true,
+      default: 0,
+    },
+
+    acknowledged: {
+      type: Boolean,
+      default: false,
     },
 
     // For filter replacements: which filter stage was serviced

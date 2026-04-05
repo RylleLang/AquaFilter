@@ -13,16 +13,8 @@ const logger = require('../config/logger');
  * preventing spoofed or tampered sensor data from entering the database.
  */
 const validateTelemetrySignature = (req, res, next) => {
-  const signature = req.headers['x-device-signature'];
+  const deviceSecret = req.headers['x-device-signature'];
   const deviceId = req.headers['x-device-id'];
-
-  if (!signature) {
-    logger.warn(`Telemetry rejected — missing X-Device-Signature from ${req.ip}`);
-    return res.status(401).json({
-      success: false,
-      message: 'Missing device signature',
-    });
-  }
 
   if (!deviceId) {
     return res.status(400).json({
@@ -31,31 +23,29 @@ const validateTelemetrySignature = (req, res, next) => {
     });
   }
 
-  // Use the raw body bytes for HMAC — re-serializing req.body changes number formats
-  const rawBody = req.rawBody || JSON.stringify(req.body);
-  const expectedSignature = crypto
-    .createHmac('sha256', process.env.DEVICE_HMAC_SECRET)
-    .update(rawBody)
-    .digest('hex');
+  if (!deviceSecret) {
+    logger.warn(`Telemetry rejected — missing X-Device-Signature from ${req.ip}`);
+    return res.status(401).json({
+      success: false,
+      message: 'Missing device signature',
+    });
+  }
 
-  // Constant-time comparison to prevent timing attacks
-  const sigBuffer = Buffer.from(signature, 'hex');
-  const expectedBuffer = Buffer.from(expectedSignature, 'hex');
+  // Simple constant-time secret comparison
+  const expected = Buffer.from(process.env.DEVICE_HMAC_SECRET || '');
+  const received = Buffer.from(deviceSecret);
 
   if (
-    sigBuffer.length !== expectedBuffer.length ||
-    !crypto.timingSafeEqual(sigBuffer, expectedBuffer)
+    expected.length !== received.length ||
+    !crypto.timingSafeEqual(expected, received)
   ) {
-    logger.warn(
-      `Telemetry rejected — invalid signature for deviceId: ${deviceId}`
-    );
+    logger.warn(`Telemetry rejected — invalid secret for deviceId: ${deviceId}`);
     return res.status(401).json({
       success: false,
       message: 'Invalid device signature',
     });
   }
 
-  // Attach validated deviceId to the request
   req.deviceId = deviceId;
   next();
 };

@@ -48,7 +48,11 @@ app.use(
 app.use(compression());
 
 // Parse JSON bodies — 50kb limit (IoT payloads are small)
-app.use(express.json({ limit: '50kb' }));
+// rawBody is saved for HMAC signature verification on telemetry routes
+app.use(express.json({
+  limit: '50kb',
+  verify: (req, res, buf) => { req.rawBody = buf.toString('utf8'); },
+}));
 app.use(express.urlencoded({ extended: true, limit: '50kb' }));
 
 // HTTP request logging

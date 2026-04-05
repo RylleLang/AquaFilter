@@ -31,8 +31,8 @@ const validateTelemetrySignature = (req, res, next) => {
     });
   }
 
-  // Reconstruct the HMAC from the raw body string
-  const rawBody = JSON.stringify(req.body);
+  // Use the raw body bytes for HMAC — re-serializing req.body changes number formats
+  const rawBody = req.rawBody || JSON.stringify(req.body);
   const expectedSignature = crypto
     .createHmac('sha256', process.env.DEVICE_HMAC_SECRET)
     .update(rawBody)

@@ -3,7 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, Text } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
 import { useAuth } from '../context/AuthContext';
@@ -18,30 +18,40 @@ import MaintenanceScreen from '../screens/MaintenanceScreen';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-const tabIcon = (routeName, focused, color) => {
-  const icons = {
-    Dashboard: focused ? 'water' : 'water-outline',
-    Analytics: focused ? 'stats-chart' : 'stats-chart-outline',
-    Maintenance: focused ? 'construct' : 'construct-outline',
-  };
-  return <Ionicons name={icons[routeName]} size={24} color={color} />;
+const TAB_CONFIG = {
+  Dashboard: { active: 'water', inactive: 'water-outline', label: 'Dashboard' },
+  Analytics: { active: 'stats-chart', inactive: 'stats-chart-outline', label: 'Analytics' },
+  Maintenance: { active: 'construct', inactive: 'construct-outline', label: 'Maintenance' },
 };
 
 const MainTabs = () => {
-  const { colors } = useTheme();
+  const { colors: C } = useTheme();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: colors.tabBar,
-          borderTopColor: colors.tabBorder,
-          height: 60,
+          backgroundColor: C.tabBar,
+          borderTopColor: C.tabBorder,
+          borderTopWidth: 1,
+          height: 64,
+          paddingBottom: 8,
+          paddingTop: 8,
         },
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.muted,
-        tabBarLabelStyle: { fontSize: 11, marginBottom: 6 },
-        tabBarIcon: ({ focused, color }) => tabIcon(route.name, focused, color),
+        tabBarActiveTintColor: C.primary,
+        tabBarInactiveTintColor: C.muted,
+        tabBarLabel: ({ focused, color }) => (
+          <Text style={{ fontSize: 11, fontWeight: focused ? '700' : '500', color, marginTop: 2 }}>
+            {TAB_CONFIG[route.name].label}
+          </Text>
+        ),
+        tabBarIcon: ({ focused, color }) => (
+          <Ionicons
+            name={focused ? TAB_CONFIG[route.name].active : TAB_CONFIG[route.name].inactive}
+            size={22}
+            color={color}
+          />
+        ),
       })}
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
@@ -53,12 +63,12 @@ const MainTabs = () => {
 
 const AppNavigator = () => {
   const { user, loading } = useAuth();
-  const { colors, isDark } = useTheme();
+  const { colors: C, isDark } = useTheme();
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={{ flex: 1, backgroundColor: C.bg, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={C.primary} />
       </View>
     );
   }

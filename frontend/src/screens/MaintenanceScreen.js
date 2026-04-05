@@ -30,25 +30,36 @@ const RecordCard = ({ record, onAck, C }) => {
   });
 
   return (
-    <View style={{ backgroundColor: C.card, borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: C.border, borderLeftWidth: 3, borderLeftColor: color }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Ionicons name={icon} size={16} color={color} />
-          <Text style={{ fontSize: 12, fontWeight: '700', color }}>{record.type.replace('_', ' ').toUpperCase()}</Text>
+    <View style={{
+      backgroundColor: C.card, borderRadius: 14, padding: 16,
+      marginBottom: 10, borderWidth: 1, borderColor: C.border,
+      borderLeftWidth: 4, borderLeftColor: color,
+    }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: color + '20', alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name={icon} size={15} color={color} />
+          </View>
+          <Text style={{ fontSize: 12, fontWeight: '800', color, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            {record.type.replace('_', ' ')}
+          </Text>
         </View>
         {!record.acknowledged ? (
-          <TouchableOpacity style={{ backgroundColor: C.ackBtnBg, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 }} onPress={() => onAck(record._id)}>
-            <Text style={{ color: C.primary, fontSize: 12, fontWeight: '600' }}>Acknowledge</Text>
+          <TouchableOpacity
+            style={{ backgroundColor: C.primary + '20', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: C.primary + '40' }}
+            onPress={() => onAck(record._id)}
+          >
+            <Text style={{ color: C.primary, fontSize: 12, fontWeight: '700' }}>Acknowledge</Text>
           </TouchableOpacity>
         ) : (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Ionicons name="checkmark-circle" size={14} color={C.success} />
-            <Text style={{ color: C.success, fontSize: 11 }}>Done</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: C.success + '20', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}>
+            <Ionicons name="checkmark-circle" size={13} color={C.success} />
+            <Text style={{ color: C.success, fontSize: 11, fontWeight: '700' }}>Done</Text>
           </View>
         )}
       </View>
-      <Text style={{ color: C.text, fontSize: 14, lineHeight: 20 }}>{record.notes}</Text>
-      <Text style={{ color: C.muted, fontSize: 11, marginTop: 8 }}>{dateStr}</Text>
+      <Text style={{ color: C.text, fontSize: 14, lineHeight: 21 }}>{record.notes}</Text>
+      <Text style={{ color: C.muted, fontSize: 11, marginTop: 10 }}>{dateStr}</Text>
     </View>
   );
 };
@@ -107,31 +118,49 @@ export default function MaintenanceScreen() {
 
   const pending = records.filter((r) => !r.acknowledged);
   const completed = records.filter((r) => r.acknowledged);
-  const card = { backgroundColor: C.card, borderRadius: 14, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: C.border };
+  const filterBarColor = deviceState.filterHealthPct > 50 ? C.success : deviceState.filterHealthPct > 20 ? C.warning : C.danger;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
 
         {/* Header */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <Text style={{ fontSize: 22, fontWeight: '800', color: C.text }}>Maintenance Log</Text>
-          <TouchableOpacity style={{ flexDirection: 'row', backgroundColor: C.primary, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, alignItems: 'center', gap: 4 }} onPress={() => setModalVisible(true)}>
-            <Ionicons name="add" size={20} color="#000" />
-            <Text style={{ color: '#000', fontWeight: '700', fontSize: 14 }}>Log</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <View>
+            <Text style={{ fontSize: 13, color: C.muted, fontWeight: '500', textTransform: 'uppercase', letterSpacing: 1 }}>History</Text>
+            <Text style={{ fontSize: 24, fontWeight: '800', color: C.text, marginTop: 2 }}>Maintenance</Text>
+          </View>
+          <TouchableOpacity
+            style={{ flexDirection: 'row', backgroundColor: C.primary, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 10, alignItems: 'center', gap: 6 }}
+            onPress={() => setModalVisible(true)}
+          >
+            <Ionicons name="add" size={18} color="#fff" />
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Log</Text>
           </TouchableOpacity>
         </View>
 
         {/* Filter Health Banner */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: deviceState.filterHealthPct <= 20 ? C.alertBg : C.filterBannerBg, borderRadius: 12, padding: 14, marginBottom: 20, borderWidth: 1, borderColor: deviceState.filterHealthPct <= 20 ? C.border : C.filterBannerBorder }}>
-          <Ionicons name="leaf" size={20} color={deviceState.filterHealthPct <= 20 ? C.danger : C.success} />
-          <View style={{ flex: 1, marginLeft: 10 }}>
-            <Text style={{ color: C.text, fontWeight: '600', fontSize: 14 }}>Banana Peel Bio-Filter</Text>
-            <Text style={{ color: C.muted, fontSize: 12, marginTop: 2 }}>
-              {deviceState.filterHealthPct}% remaining · {deviceState.filterCycleCount} cycles completed
-            </Text>
+        <View style={{
+          backgroundColor: C.card, borderRadius: 18, padding: 18, marginBottom: 20,
+          borderWidth: 1, borderColor: deviceState.filterHealthPct <= 20 ? C.danger + '40' : C.border,
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <View style={{ width: 46, height: 46, borderRadius: 14, backgroundColor: filterBarColor + '20', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="leaf" size={22} color={filterBarColor} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: C.text, fontWeight: '700', fontSize: 14 }}>Banana Peel Bio-Filter</Text>
+              <Text style={{ color: C.muted, fontSize: 12, marginTop: 3 }}>
+                {deviceState.filterHealthPct}% remaining · {deviceState.filterCycleCount} cycles
+              </Text>
+            </View>
+            {deviceState.filterHealthPct <= 20 && (
+              <Ionicons name="warning" size={20} color={C.danger} />
+            )}
           </View>
-          {deviceState.filterHealthPct <= 20 && <Ionicons name="warning" size={18} color={C.danger} />}
+          <View style={{ height: 6, backgroundColor: C.border, borderRadius: 6, overflow: 'hidden', marginTop: 14 }}>
+            <View style={{ height: '100%', width: `${deviceState.filterHealthPct}%`, backgroundColor: filterBarColor, borderRadius: 6 }} />
+          </View>
         </View>
 
         {loading ? (
@@ -142,21 +171,32 @@ export default function MaintenanceScreen() {
           <>
             {pending.length > 0 && (
               <>
-                <Text style={{ color: C.muted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>Pending ({pending.length})</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <Text style={{ color: C.muted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }}>Pending</Text>
+                  <View style={{ backgroundColor: C.warning + '20', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2 }}>
+                    <Text style={{ color: C.warning, fontSize: 11, fontWeight: '700' }}>{pending.length}</Text>
+                  </View>
+                </View>
                 {pending.map((r) => <RecordCard key={r._id} record={r} onAck={handleAck} C={C} />)}
               </>
             )}
+
             {completed.length > 0 && (
               <>
-                <Text style={{ color: C.muted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>Completed</Text>
+                <Text style={{ color: C.muted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, marginTop: pending.length > 0 ? 8 : 0 }}>
+                  Completed
+                </Text>
                 {completed.map((r) => <RecordCard key={r._id} record={r} onAck={handleAck} C={C} />)}
               </>
             )}
+
             {records.length === 0 && (
-              <View style={{ alignItems: 'center', paddingVertical: 60, gap: 8 }}>
-                <Ionicons name="construct-outline" size={48} color={C.muted} />
-                <Text style={{ color: C.muted, fontSize: 13 }}>No maintenance records yet.</Text>
-                <Text style={{ color: C.muted, fontSize: 13 }}>Tap "Log" to create one.</Text>
+              <View style={{ alignItems: 'center', paddingVertical: 60, gap: 12 }}>
+                <View style={{ width: 70, height: 70, borderRadius: 22, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="construct-outline" size={32} color={C.muted} />
+                </View>
+                <Text style={{ color: C.muted, fontSize: 14, fontWeight: '500' }}>No maintenance records yet.</Text>
+                <Text style={{ color: C.muted, fontSize: 12 }}>Tap "Log" to create one.</Text>
               </View>
             )}
           </>
@@ -166,33 +206,45 @@ export default function MaintenanceScreen() {
       {/* Add Record Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => setModalVisible(false)}>
         <View style={{ flex: 1, backgroundColor: C.modalOverlay, justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: C.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, borderWidth: 1, borderColor: C.border }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: C.text }}>Log Maintenance</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color={C.muted} />
+          <View style={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, borderWidth: 1, borderColor: C.border }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: C.text }}>Log Maintenance</Text>
+              <TouchableOpacity
+                onPress={() => setModalVisible(false)}
+                style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: C.inputBg, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Ionicons name="close" size={18} color={C.muted} />
               </TouchableOpacity>
             </View>
 
-            <Text style={{ color: C.muted, fontSize: 13, fontWeight: '500', marginBottom: 8 }}>Type</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+            <Text style={{ color: C.muted, fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>Type</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
               {TYPES.map((t) => (
                 <TouchableOpacity
                   key={t}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: form.type === t ? TYPE_COLORS[t] : C.border, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: form.type === t ? C.inputBg : C.bg }}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 6,
+                    borderWidth: 1, borderColor: form.type === t ? TYPE_COLORS[t] : C.border,
+                    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9,
+                    backgroundColor: form.type === t ? TYPE_COLORS[t] + '20' : C.inputBg,
+                  }}
                   onPress={() => setForm((f) => ({ ...f, type: t }))}
                 >
-                  <Ionicons name={TYPE_ICONS[t]} size={16} color={form.type === t ? TYPE_COLORS[t] : C.muted} />
-                  <Text style={{ color: form.type === t ? TYPE_COLORS[t] : C.muted, fontSize: 12, textTransform: 'capitalize' }}>
+                  <Ionicons name={TYPE_ICONS[t]} size={14} color={form.type === t ? TYPE_COLORS[t] : C.muted} />
+                  <Text style={{ color: form.type === t ? TYPE_COLORS[t] : C.muted, fontSize: 12, fontWeight: '600', textTransform: 'capitalize' }}>
                     {t.replace('_', ' ')}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
 
-            <Text style={{ color: C.muted, fontSize: 13, fontWeight: '500', marginBottom: 8 }}>Notes</Text>
+            <Text style={{ color: C.muted, fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>Notes</Text>
             <TextInput
-              style={{ backgroundColor: C.inputBg, borderWidth: 1, borderColor: C.border, borderRadius: 10, padding: 12, color: C.text, fontSize: 14, minHeight: 100, marginBottom: 16, textAlignVertical: 'top' }}
+              style={{
+                backgroundColor: C.inputBg, borderWidth: 1, borderColor: C.border,
+                borderRadius: 14, padding: 14, color: C.text, fontSize: 14,
+                minHeight: 100, marginBottom: 20, textAlignVertical: 'top',
+              }}
               placeholder="Describe the maintenance performed..."
               placeholderTextColor={C.muted}
               value={form.notes}
@@ -201,8 +253,14 @@ export default function MaintenanceScreen() {
               numberOfLines={4}
             />
 
-            <TouchableOpacity style={{ backgroundColor: C.primary, borderRadius: 10, paddingVertical: 14, alignItems: 'center' }} onPress={handleSubmit} disabled={submitting}>
-              {submitting ? <ActivityIndicator color="#000" /> : <Text style={{ color: '#000', fontWeight: '700', fontSize: 16 }}>Save Record</Text>}
+            <TouchableOpacity
+              style={{ backgroundColor: C.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center' }}
+              onPress={handleSubmit}
+              disabled={submitting}
+            >
+              {submitting
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>Save Record</Text>}
             </TouchableOpacity>
           </View>
         </View>

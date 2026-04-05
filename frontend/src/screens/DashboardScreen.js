@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  View, Text, ScrollView, TouchableOpacity,
   Switch, ActivityIndicator, SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,24 +16,25 @@ const formatTime = (secs) => {
 };
 
 const SensorCard = ({ icon, label, value, unit, color, status, C }) => (
-  <View style={[card_s.sensorCard, { backgroundColor: C.card, borderColor: C.border }]}>
-    <Ionicons name={icon} size={22} color={color} />
-    <Text style={[card_s.sensorLabel, { color: C.muted }]}>{label}</Text>
-    <Text style={[card_s.sensorValue, { color }]}>
+  <View style={{
+    flex: 1, backgroundColor: C.card, borderRadius: 16, padding: 16,
+    alignItems: 'center', borderWidth: 1, borderColor: C.border,
+  }}>
+    <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: color + '20', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+      <Ionicons name={icon} size={20} color={color} />
+    </View>
+    <Text style={{ fontSize: 22, fontWeight: '800', color }}>
       {value !== null ? value : '--'}
-      <Text style={card_s.sensorUnit}> {unit}</Text>
     </Text>
-    {status ? <Text style={[card_s.sensorStatus, { color }]}>{status}</Text> : null}
+    <Text style={{ fontSize: 10, color: color, fontWeight: '600', marginTop: 1 }}>{unit}</Text>
+    <Text style={{ fontSize: 11, color: C.muted, marginTop: 6 }}>{label}</Text>
+    {status ? (
+      <View style={{ marginTop: 8, backgroundColor: color + '20', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 }}>
+        <Text style={{ fontSize: 10, color, fontWeight: '700' }}>{status}</Text>
+      </View>
+    ) : null}
   </View>
 );
-
-const card_s = StyleSheet.create({
-  sensorCard: { flex: 1, borderRadius: 14, padding: 14, alignItems: 'center', borderWidth: 1 },
-  sensorLabel: { fontSize: 11, marginTop: 6, marginBottom: 4 },
-  sensorValue: { fontSize: 20, fontWeight: '800' },
-  sensorUnit: { fontSize: 11, fontWeight: '400' },
-  sensorStatus: { fontSize: 10, marginTop: 4, fontWeight: '600' },
-});
 
 export default function DashboardScreen() {
   const { deviceState, sensorData, loading, togglePower, startCycle, pauseCycle } = useDevice();
@@ -48,106 +49,150 @@ export default function DashboardScreen() {
     if (turbidity !== null && turbidity > 100) notify.highTurbidity(turbidity);
   }, [ph, turbidity]);
 
-  const phStatus = ph === null ? '' : ph >= 6.5 && ph <= 8.5 ? 'Normal' : 'Out of Range';
+  const phStatus = ph === null ? '' : ph >= 6.5 && ph <= 8.5 ? 'Normal' : 'Alert';
   const phColor = ph === null ? C.muted : ph >= 6.5 && ph <= 8.5 ? C.success : C.danger;
   const tdsColor = tds === null ? C.muted : tds <= 500 ? C.success : tds <= 1000 ? C.warning : C.danger;
   const turbColor = turbidity === null ? C.muted : turbidity <= 50 ? C.success : turbidity <= 100 ? C.warning : C.danger;
   const filterBarColor = filterHealthPct > 50 ? C.success : filterHealthPct > 20 ? C.warning : C.danger;
+
+  const card = {
+    backgroundColor: C.card, borderRadius: 18, padding: 18,
+    marginBottom: 14, borderWidth: 1, borderColor: C.border,
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
 
         {/* Header */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <View>
-            <Text style={{ fontSize: 22, fontWeight: '800', color: C.text }}>
-              Hello, {user?.name?.split(' ')[0] || 'User'} 👋
+            <Text style={{ fontSize: 13, color: C.muted, fontWeight: '500' }}>Welcome back,</Text>
+            <Text style={{ fontSize: 24, fontWeight: '800', color: C.text, marginTop: 2 }}>
+              {user?.name?.split(' ')[0] || 'User'}
             </Text>
-            <Text style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>AquaFilter Control Center</Text>
           </View>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity onPress={toggleTheme} style={{ padding: 8 }}>
-              <Ionicons name={isDark ? 'sunny-outline' : 'moon-outline'} size={22} color={C.muted} />
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <TouchableOpacity
+              onPress={toggleTheme}
+              style={{ width: 42, height: 42, backgroundColor: C.card, borderRadius: 12, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Ionicons name={isDark ? 'sunny-outline' : 'moon-outline'} size={20} color={C.muted} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={logout} style={{ padding: 8 }}>
-              <Ionicons name="log-out-outline" size={22} color={C.muted} />
+            <TouchableOpacity
+              onPress={logout}
+              style={{ width: 42, height: 42, backgroundColor: C.card, borderRadius: 12, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Ionicons name="log-out-outline" size={20} color={C.muted} />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Power Toggle */}
-        <View style={{ backgroundColor: C.card, borderRadius: 14, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: C.border }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Ionicons name={isOn ? 'power' : 'power-outline'} size={28} color={isOn ? C.primary : C.muted} />
-              <View style={{ marginLeft: 12 }}>
-                <Text style={{ fontSize: 15, fontWeight: '600', color: C.text }}>System Power</Text>
-                <Text style={{ color: isOn ? C.success : C.muted, fontSize: 13 }}>
+        {/* Status Banner */}
+        <View style={{ backgroundColor: isOn ? C.primary + '18' : C.card, borderRadius: 18, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: isOn ? C.primary + '50' : C.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <View style={{ width: 50, height: 50, borderRadius: 16, backgroundColor: isOn ? C.primary + '25' : C.border + '40', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name={isOn ? 'power' : 'power-outline'} size={26} color={isOn ? C.primary : C.muted} />
+            </View>
+            <View>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: C.text }}>System Power</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: isOn ? C.success : C.muted }} />
+                <Text style={{ color: isOn ? C.success : C.muted, fontSize: 13, fontWeight: '600' }}>
                   {isOn ? 'ONLINE' : 'OFFLINE'}
                 </Text>
               </View>
             </View>
-            {loading ? (
-              <ActivityIndicator color={C.primary} />
-            ) : (
-              <Switch
-                value={isOn}
-                onValueChange={togglePower}
-                trackColor={{ false: C.border, true: C.isDark ? '#004D5E' : '#B2EBF2' }}
-                thumbColor={isOn ? C.primary : C.muted}
-              />
-            )}
           </View>
+          {loading ? (
+            <ActivityIndicator color={C.primary} />
+          ) : (
+            <Switch
+              value={isOn}
+              onValueChange={togglePower}
+              trackColor={{ false: C.border, true: C.primary + '80' }}
+              thumbColor={isOn ? C.primary : C.muted}
+            />
+          )}
         </View>
 
         {/* Cycle Control */}
-        <View style={{ backgroundColor: C.card, borderRadius: 14, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: C.border }}>
-          <Text style={{ fontSize: 15, fontWeight: '600', color: C.text }}>Filtration Cycle</Text>
-          <Text style={{ fontSize: 48, fontWeight: '800', color: C.primary, textAlign: 'center', marginVertical: 12 }}>
+        <View style={card}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: C.text }}>Filtration Cycle</Text>
+            <View style={{ backgroundColor: cycleRunning ? C.success + '20' : C.border + '40', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4 }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: cycleRunning ? C.success : C.muted }}>
+                {cycleRunning ? 'RUNNING' : 'IDLE'}
+              </Text>
+            </View>
+          </View>
+
+          <Text style={{ fontSize: 52, fontWeight: '800', color: C.primary, textAlign: 'center', letterSpacing: 2 }}>
             {formatTime(elapsedSeconds)}
           </Text>
-          <View style={{ height: 8, backgroundColor: C.border, borderRadius: 4, overflow: 'hidden', marginVertical: 4 }}>
-            <View style={{ height: '100%', width: `${cycleProgress}%`, backgroundColor: C.primary, borderRadius: 4 }} />
+
+          <View style={{ marginTop: 16, marginBottom: 8 }}>
+            <View style={{ height: 8, backgroundColor: C.border, borderRadius: 8, overflow: 'hidden' }}>
+              <View style={{ height: '100%', width: `${cycleProgress}%`, backgroundColor: C.primary, borderRadius: 8 }} />
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
+              <Text style={{ color: C.muted, fontSize: 12 }}>Progress</Text>
+              <Text style={{ color: C.primary, fontSize: 12, fontWeight: '700' }}>{cycleProgress.toFixed(0)}%</Text>
+            </View>
           </View>
-          <Text style={{ color: C.muted, fontSize: 12, textAlign: 'right', marginBottom: 12 }}>
-            {cycleProgress.toFixed(0)}% complete
-          </Text>
+
           <TouchableOpacity
-            style={{ flexDirection: 'row', backgroundColor: C.primary, borderRadius: 10, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', gap: 8, opacity: !isOn ? 0.4 : 1 }}
+            style={{
+              flexDirection: 'row', backgroundColor: !isOn ? C.border : C.primary,
+              borderRadius: 14, paddingVertical: 14, alignItems: 'center',
+              justifyContent: 'center', gap: 8, marginTop: 8, opacity: !isOn ? 0.5 : 1,
+            }}
             onPress={cycleRunning ? pauseCycle : startCycle}
             disabled={!isOn || loading}
           >
-            <Ionicons name={cycleRunning ? 'pause-circle' : 'play-circle'} size={20} color="#000" />
-            <Text style={{ color: '#000', fontWeight: '700', fontSize: 15 }}>{cycleRunning ? 'Pause' : 'Start'} Cycle</Text>
+            <Ionicons name={cycleRunning ? 'pause-circle' : 'play-circle'} size={22} color="#fff" />
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>
+              {cycleRunning ? 'Pause Cycle' : 'Start Cycle'}
+            </Text>
           </TouchableOpacity>
         </View>
 
         {/* Sensor Readings */}
-        <Text style={{ fontSize: 16, fontWeight: '700', color: C.text, marginBottom: 10 }}>Live Sensor Data</Text>
+        <Text style={{ fontSize: 13, fontWeight: '700', color: C.muted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
+          Live Sensor Data
+        </Text>
         <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
-          <SensorCard icon="flask" label="pH Level" value={ph} unit="" color={phColor} status={phStatus} C={C} />
+          <SensorCard icon="flask" label="pH Level" value={ph} unit="pH" color={phColor} status={phStatus} C={C} />
           <SensorCard icon="eye" label="Turbidity" value={turbidity} unit="NTU" color={turbColor} C={C} />
           <SensorCard icon="beaker" label="TDS" value={tds} unit="ppm" color={tdsColor} C={C} />
         </View>
 
         {/* Filter Health */}
-        <View style={{ backgroundColor: C.card, borderRadius: 14, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: C.border }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name="leaf" size={20} color={filterBarColor} />
-            <Text style={{ fontSize: 15, fontWeight: '600', color: C.text, marginLeft: 8 }}>Banana Peel Bio-Filter Health</Text>
+        <View style={card}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: filterBarColor + '20', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="leaf" size={18} color={filterBarColor} />
+              </View>
+              <View>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: C.text }}>Bio-Filter Health</Text>
+                <Text style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>Banana Peel Adsorbent</Text>
+              </View>
+            </View>
+            <Text style={{ fontSize: 22, fontWeight: '800', color: filterBarColor }}>{filterHealthPct}%</Text>
           </View>
-          <View style={{ height: 8, backgroundColor: C.border, borderRadius: 4, overflow: 'hidden', marginTop: 12, marginVertical: 4 }}>
-            <View style={{ height: '100%', width: `${filterHealthPct}%`, backgroundColor: filterBarColor, borderRadius: 4 }} />
+
+          <View style={{ height: 8, backgroundColor: C.border, borderRadius: 8, overflow: 'hidden' }}>
+            <View style={{ height: '100%', width: `${filterHealthPct}%`, backgroundColor: filterBarColor, borderRadius: 8 }} />
           </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-            <Text style={{ color: filterBarColor, fontWeight: '700' }}>{filterHealthPct}% remaining</Text>
-            <Text style={{ color: C.muted, fontSize: 12 }}>{filterCycleCount} cycles used</Text>
-          </View>
+          <Text style={{ color: C.muted, fontSize: 12, marginTop: 8 }}>{filterCycleCount} cycles used</Text>
+
           {filterHealthPct <= 20 && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: C.alertBg, padding: 10, borderRadius: 8, marginTop: 10, gap: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: C.alertBg, padding: 12, borderRadius: 12, marginTop: 12, gap: 8, borderWidth: 1, borderColor: C.danger + '40' }}>
               <Ionicons name="warning" size={16} color={C.warning} />
-              <Text style={{ color: C.warning, fontSize: 13, flex: 1 }}>Filter replacement recommended soon.</Text>
+              <Text style={{ color: C.warning, fontSize: 13, flex: 1, fontWeight: '500' }}>
+                Filter replacement recommended soon.
+              </Text>
             </View>
           )}
         </View>

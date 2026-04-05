@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { storage } from '../utils/storage';
 
-const BASE_URL = 'https://aquafilter-production.up.railway.app/api';
+const BASE_URL = 'https://aquafilter.onrender.com/api';
 
 const client = axios.create({
   baseURL: BASE_URL,

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  Modal, TextInput, ActivityIndicator, SafeAreaView, Alert,
+  Modal, TextInput, ActivityIndicator, Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { maintenanceAPI } from '../api/client';
 import { useDevice } from '../context/DeviceContext';
@@ -121,7 +122,7 @@ export default function MaintenanceScreen() {
   const filterBarColor = deviceState.filterHealthPct > 50 ? C.success : deviceState.filterHealthPct > 20 ? C.warning : C.danger;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={['top']}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
 
         {/* Header */}

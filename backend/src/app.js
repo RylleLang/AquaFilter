@@ -13,6 +13,7 @@ const telemetryRoutes = require('./routes/telemetry');
 const sensorRoutes = require('./routes/sensor');
 const deviceRoutes = require('./routes/device');
 const maintenanceRoutes = require('./routes/maintenance');
+const configRoutes = require('./routes/config');
 
 const app = express();
 
@@ -89,6 +90,7 @@ app.use('/api/telemetry', telemetryRoutes);
 app.use('/api/device/:deviceId', deviceRoutes);
 app.use('/api/sensors/:deviceId', sensorRoutes);
 app.use('/api/maintenance/:deviceId', maintenanceRoutes);
+app.use('/api/config', configRoutes);
 
 // -------------------------------------------------------------------
 // ERROR HANDLING

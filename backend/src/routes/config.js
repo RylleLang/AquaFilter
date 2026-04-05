@@ -60,4 +60,24 @@ router.get('/wifi/:deviceId', async (req, res) => {
   }
 });
 
+// GET /api/config/cycle-state/:deviceId — ESP32 polls this to know if pump should run
+// Secured with X-Device-Signature header (same secret as telemetry)
+router.get('/cycle-state/:deviceId', async (req, res) => {
+  const { deviceId } = req.params;
+  const signature = req.headers['x-device-signature'];
+
+  if (signature !== process.env.DEVICE_HMAC_SECRET) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+
+  try {
+    const DeviceState = require('../models/DeviceState');
+    const state = await DeviceState.findOne({ deviceId }).lean();
+    if (!state) return res.json({ success: true, cycleRunning: false });
+    res.json({ success: true, cycleRunning: state.cycleStatus === 'running' });
+  } catch (err) {
+    res.status(500).json({ success: false, cycleRunning: false });
+  }
+});
+
 module.exports = router;

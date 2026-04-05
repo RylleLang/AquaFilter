@@ -34,26 +34,27 @@ export const authAPI = {
   me: () => client.get('/auth/me'),
 };
 
+const DEVICE_ID = 'esp32-aquafilter-001';
+
 // --- Sensor / Telemetry ---
 export const sensorAPI = {
-  getLatest: () => client.get('/sensor/latest'),
-  getHistory: (params) => client.get('/sensor/history', { params }),
-  getStats: (range) => client.get('/sensor/stats', { params: { range } }),
+  getLatest: () => client.get(`/sensors/${DEVICE_ID}/latest`),
+  getHistory: (params) => client.get(`/sensors/${DEVICE_ID}/history`, { params }),
+  getStats: (range) => client.get(`/sensors/${DEVICE_ID}/averages`, { params: { range } }),
 };
 
 // --- Device Control ---
 export const deviceAPI = {
-  getState: () => client.get('/device/state'),
-  toggle: (on) => client.post('/device/toggle', { on }),
-  startCycle: () => client.post('/device/cycle/start'),
-  pauseCycle: () => client.post('/device/cycle/pause'),
+  getState: () => client.get(`/device/${DEVICE_ID}/state`),
+  toggle: (on) => client.patch(`/device/${DEVICE_ID}/power`, { isPoweredOn: on }),
+  startCycle: () => client.post(`/device/${DEVICE_ID}/cycle/start`),
+  pauseCycle: () => client.patch(`/device/${DEVICE_ID}/cycle/pause`),
 };
 
 // --- Maintenance ---
 export const maintenanceAPI = {
-  getAll: () => client.get('/maintenance'),
-  create: (record) => client.post('/maintenance', record),
-  acknowledge: (id) => client.patch(`/maintenance/${id}/acknowledge`),
+  getAll: () => client.get(`/maintenance/${DEVICE_ID}`),
+  create: (record) => client.post(`/maintenance/${DEVICE_ID}`, record),
 };
 
 export default client;

@@ -34,8 +34,27 @@ export const DeviceProvider = ({ children }) => {
         deviceAPI.getState(),
         sensorAPI.getLatest(),
       ]);
-      setDeviceState((prev) => ({ ...prev, ...stateRes.data }));
-      setSensorData(sensorRes.data);
+
+      // Map backend DeviceState fields → frontend shape
+      const state = stateRes.data?.data;
+      if (state) {
+        setDeviceState((prev) => ({
+          ...prev,
+          isOn: state.isPoweredOn ?? prev.isOn,
+          cycleRunning: state.cycleStatus === 'running',
+          filterHealthPct: state.filterHealthPercent ?? prev.filterHealthPct,
+          filterCycleCount: state.cyclesSinceLastService ?? prev.filterCycleCount,
+        }));
+      }
+
+      // Backend returns { data: { preFilter, postFilter } } — use postFilter for dashboard
+      const postFilter = sensorRes.data?.data?.postFilter;
+      setSensorData({
+        ph: postFilter?.ph ?? null,
+        turbidity: postFilter?.turbidity ?? null,
+        tds: postFilter?.tds ?? null,
+        timestamp: postFilter?.timestamp ?? null,
+      });
     } catch {
       // silent — network blip handled by interceptor
     }
@@ -75,7 +94,14 @@ export const DeviceProvider = ({ children }) => {
     setLoading(true);
     try {
       const { data } = await deviceAPI.startCycle();
-      setDeviceState((prev) => ({ ...prev, ...data, elapsedSeconds: 0 }));
+      const state = data?.data;
+      setDeviceState((prev) => ({
+        ...prev,
+        cycleRunning: state?.cycleStatus === 'running' ?? true,
+        filterHealthPct: state?.filterHealthPercent ?? prev.filterHealthPct,
+        filterCycleCount: state?.cyclesSinceLastService ?? prev.filterCycleCount,
+        elapsedSeconds: 0,
+      }));
     } finally {
       setLoading(false);
     }
@@ -85,7 +111,13 @@ export const DeviceProvider = ({ children }) => {
     setLoading(true);
     try {
       const { data } = await deviceAPI.pauseCycle();
-      setDeviceState((prev) => ({ ...prev, ...data }));
+      const state = data?.data;
+      setDeviceState((prev) => ({
+        ...prev,
+        cycleRunning: state?.cycleStatus === 'running' ?? false,
+        filterHealthPct: state?.filterHealthPercent ?? prev.filterHealthPct,
+        filterCycleCount: state?.cyclesSinceLastService ?? prev.filterCycleCount,
+      }));
     } finally {
       setLoading(false);
     }

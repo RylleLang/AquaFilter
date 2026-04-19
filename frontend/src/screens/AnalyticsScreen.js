@@ -30,15 +30,20 @@ export default function AnalyticsScreen() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  const rangeToMs = { '1h': 3600000, '6h': 21600000, '24h': 86400000, '7d': 604800000 };
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
+      const endDate   = new Date().toISOString();
+      const startDate = new Date(Date.now() - (rangeToMs[range] || 86400000)).toISOString();
+
       const [histRes, statRes] = await Promise.all([
-        sensorAPI.getHistory({ range, limit: 20 }),
-        sensorAPI.getStats(range),
+        sensorAPI.getHistory({ startDate, endDate, limit: 50 }),
+        sensorAPI.getStats({ startDate, endDate }),
       ]);
-      setReadings(histRes.data?.readings || []);
-      setStats(statRes.data);
+      setReadings(histRes.data?.data || []);
+      setStats(statRes.data?.data);
     } catch (err) {
       console.warn('Analytics fetch error:', err.message);
     } finally {
@@ -49,7 +54,7 @@ export default function AnalyticsScreen() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const toChartData = (field) =>
-    [...readings].reverse().map((r) => ({ value: r[field] ?? 0, timestamp: r.timestamp }));
+    [...readings].reverse().map((r) => ({ value: r[field] ?? 0, timestamp: r.createdAt || r.timestamp }));
 
   const card = {
     backgroundColor: C.card, borderRadius: 18, padding: 18,
@@ -105,9 +110,9 @@ export default function AnalyticsScreen() {
                   Summary · {range}
                 </Text>
                 <View style={{ flexDirection: 'row', gap: 10 }}>
-                  <StatBadge label="Avg pH" value={stats.ph?.avg?.toFixed(2)} unit="pH" color={C.ph} C={C} />
-                  <StatBadge label="Turbidity" value={stats.turbidity?.avg?.toFixed(1)} unit="NTU" color={C.turbidity} C={C} />
-                  <StatBadge label="TDS" value={stats.tds?.avg?.toFixed(0)} unit="ppm" color={C.tds} C={C} />
+                  <StatBadge label="Avg pH" value={stats.avgPh?.toFixed(2)} unit="pH" color={C.ph} C={C} />
+                  <StatBadge label="Turbidity" value={stats.avgTurbidity?.toFixed(1)} unit="NTU" color={C.turbidity} C={C} />
+                  <StatBadge label="TDS" value={stats.avgTds?.toFixed(0)} unit="ppm" color={C.tds} C={C} />
                 </View>
               </View>
             )}

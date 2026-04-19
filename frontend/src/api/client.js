@@ -40,7 +40,7 @@ const DEVICE_ID = 'esp32-aquafilter-001';
 export const sensorAPI = {
   getLatest: () => client.get(`/sensors/${DEVICE_ID}/latest`),
   getHistory: (params) => client.get(`/sensors/${DEVICE_ID}/history`, { params }),
-  getStats: (range) => client.get(`/sensors/${DEVICE_ID}/averages`, { params: { range } }),
+  getStats: (params) => client.get(`/sensors/${DEVICE_ID}/averages`, { params }),
 };
 
 // --- Device Control ---

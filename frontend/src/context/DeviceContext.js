@@ -22,6 +22,7 @@ export const DeviceProvider = ({ children }) => {
     tds: null,
     timestamp: null,
   });
+  const [esp32Online, setEsp32Online] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const timerRef = useRef(null);
@@ -49,12 +50,15 @@ export const DeviceProvider = ({ children }) => {
 
       // Backend returns { data: { preFilter, postFilter } } — use postFilter for dashboard
       const postFilter = sensorRes.data?.data?.postFilter;
+      const ts = postFilter?.timestamp ?? null;
       setSensorData({
         ph: postFilter?.ph ?? null,
         turbidity: postFilter?.turbidity ?? null,
         tds: postFilter?.tds ?? null,
-        timestamp: postFilter?.timestamp ?? null,
+        timestamp: ts,
       });
+      // ESP32 is online if last reading was within 30 seconds
+      setEsp32Online(ts ? (Date.now() - new Date(ts).getTime()) < 30000 : false);
     } catch {
       // silent — network blip handled by interceptor
     }
@@ -125,7 +129,7 @@ export const DeviceProvider = ({ children }) => {
 
   return (
     <DeviceContext.Provider
-      value={{ deviceState, sensorData, loading, togglePower, startCycle, pauseCycle, fetchState }}
+      value={{ deviceState, sensorData, esp32Online, loading, togglePower, startCycle, pauseCycle, fetchState }}
     >
       {children}
     </DeviceContext.Provider>

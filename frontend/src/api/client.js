@@ -51,6 +51,13 @@ export const deviceAPI = {
   pauseCycle: () => client.patch(`/device/${DEVICE_ID}/cycle/pause`),
 };
 
+// --- Config / WiFi ---
+export const configAPI = {
+  requestWifiScan: ()         => client.post(`/config/wifi-scan-request/${DEVICE_ID}`),
+  getWifiScanResults: ()      => client.get(`/config/wifi-scan-results/${DEVICE_ID}`),
+  updateWifi: (ssid, password) => client.post('/config/wifi', { deviceId: DEVICE_ID, ssid, password }),
+};
+
 // --- Maintenance ---
 export const maintenanceAPI = {
   getAll: () => client.get(`/maintenance/${DEVICE_ID}`),

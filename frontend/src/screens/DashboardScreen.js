@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  ActivityIndicator, Modal, TextInput, Alert,
+  ActivityIndicator, Modal, TextInput, Alert, FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,7 +9,7 @@ import { useDevice } from '../context/DeviceContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { notify } from '../utils/notifications';
-import client from '../api/client';
+import { configAPI } from '../api/client';
 
 const formatTime = (secs) => {
   const m = String(Math.floor(secs / 60)).padStart(2, '0');
@@ -38,47 +38,92 @@ const SensorCard = ({ icon, label, value, unit, color, status, C }) => (
   </View>
 );
 
+// Signal strength icon based on RSSI
+const signalIcon = (rssi) => {
+  if (rssi >= -50) return 'cellular';
+  if (rssi >= -70) return 'wifi';
+  return 'wifi-outline';
+};
+
 export default function DashboardScreen() {
-  const { deviceState, sensorData, loading, startCycle, pauseCycle } = useDevice();
+  const { deviceState, sensorData, esp32Online, loading, startCycle, pauseCycle } = useDevice();
   const { user, logout } = useAuth();
   const { colors: C, isDark, toggleTheme } = useTheme();
 
   const { cycleRunning, cycleProgress, elapsedSeconds, filterHealthPct, filterCycleCount } = deviceState;
   const { ph, turbidity, tds } = sensorData;
 
-  const [wifiModal, setWifiModal] = useState(false);
-  const [wifiForm, setWifiForm] = useState({ ssid: '', password: '' });
-  const [wifiLoading, setWifiLoading] = useState(false);
+  // WiFi modal state
+  const [wifiModal, setWifiModal]       = useState(false);
+  const [scanning, setScanning]         = useState(false);
+  const [networks, setNetworks]         = useState([]);
+  const [selectedNet, setSelectedNet]   = useState(null);
+  const [password, setPassword]         = useState('');
+  const [showPass, setShowPass]         = useState(false);
+  const [wifiLoading, setWifiLoading]   = useState(false);
+  const pollRef = useRef(null);
 
   useEffect(() => {
     if (ph !== null && (ph < 6.5 || ph > 8.5)) notify.phAlert(ph);
     if (turbidity !== null && turbidity > 100) notify.highTurbidity(turbidity);
   }, [ph, turbidity]);
 
-  const phStatus = ph === null ? '' : ph >= 6.5 && ph <= 8.5 ? 'Normal' : 'Alert';
-  const phColor = ph === null ? C.muted : ph >= 6.5 && ph <= 8.5 ? C.success : C.danger;
-  const tdsColor = tds === null ? C.muted : tds <= 500 ? C.success : tds <= 1000 ? C.warning : C.danger;
-  const turbColor = turbidity === null ? C.muted : turbidity <= 50 ? C.success : turbidity <= 100 ? C.warning : C.danger;
-  const filterBarColor = filterHealthPct > 50 ? C.success : filterHealthPct > 20 ? C.warning : C.danger;
+  // Clean up polling when modal closes
+  useEffect(() => {
+    if (!wifiModal) {
+      clearInterval(pollRef.current);
+      setNetworks([]);
+      setSelectedNet(null);
+      setPassword('');
+      setScanning(false);
+    }
+  }, [wifiModal]);
 
-  const handleWifiUpdate = async () => {
-    if (!wifiForm.ssid.trim()) return Alert.alert('Error', 'Please enter WiFi name.');
+  const handleScan = async () => {
+    setScanning(true);
+    setNetworks([]);
+    setSelectedNet(null);
+    try {
+      await configAPI.requestWifiScan();
+      // Poll every 3s for results (ESP32 scans and uploads within ~10s)
+      pollRef.current = setInterval(async () => {
+        const res = await configAPI.getWifiScanResults();
+        if (res.data?.ready && res.data.networks?.length > 0) {
+          clearInterval(pollRef.current);
+          setNetworks(res.data.networks);
+          setScanning(false);
+        }
+      }, 3000);
+      // Stop polling after 30s if no result
+      setTimeout(() => {
+        clearInterval(pollRef.current);
+        setScanning(false);
+      }, 30000);
+    } catch {
+      setScanning(false);
+      Alert.alert('Error', 'Could not request scan. Make sure ESP32 is online.');
+    }
+  };
+
+  const handleConnect = async () => {
+    if (!selectedNet) return Alert.alert('Select a network first.');
     setWifiLoading(true);
     try {
-      await client.post('/config/wifi', {
-        deviceId: 'esp32-aquafilter-001',
-        ssid: wifiForm.ssid.trim(),
-        password: wifiForm.password,
-      });
-      Alert.alert('Success', 'WiFi credentials sent to device. ESP32 will reconnect shortly.');
+      await configAPI.updateWifi(selectedNet.ssid, password);
+      Alert.alert('Success', `WiFi credentials sent!\nESP32 will reconnect to "${selectedNet.ssid}" shortly.`);
       setWifiModal(false);
-      setWifiForm({ ssid: '', password: '' });
     } catch {
       Alert.alert('Error', 'Failed to update WiFi. Try again.');
     } finally {
       setWifiLoading(false);
     }
   };
+
+  const phStatus    = ph === null ? '' : ph >= 6.5 && ph <= 8.5 ? 'Normal' : 'Alert';
+  const phColor     = ph === null ? C.muted : ph >= 6.5 && ph <= 8.5 ? C.success : C.danger;
+  const tdsColor    = tds === null ? C.muted : tds <= 500 ? C.success : tds <= 1000 ? C.warning : C.danger;
+  const turbColor   = turbidity === null ? C.muted : turbidity <= 50 ? C.success : turbidity <= 100 ? C.warning : C.danger;
+  const filterBarColor = filterHealthPct > 50 ? C.success : filterHealthPct > 20 ? C.warning : C.danger;
 
   const card = {
     backgroundColor: C.card, borderRadius: 18, padding: 18,
@@ -89,7 +134,7 @@ export default function DashboardScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={['top']}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
 
-        {/* Header */}
+        {/* ── Header ── */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <View>
             <Text style={{ fontSize: 13, color: C.muted, fontWeight: '500' }}>Welcome back,</Text>
@@ -97,7 +142,23 @@ export default function DashboardScreen() {
               {user?.name?.split(' ')[0] || 'User'}
             </Text>
           </View>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
+          <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+            {/* ESP32 Online Indicator */}
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', gap: 6,
+              backgroundColor: esp32Online ? C.success + '20' : C.danger + '20',
+              borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
+              borderWidth: 1, borderColor: esp32Online ? C.success + '40' : C.danger + '40',
+            }}>
+              <View style={{
+                width: 8, height: 8, borderRadius: 4,
+                backgroundColor: esp32Online ? C.success : C.danger,
+              }} />
+              <Text style={{ fontSize: 11, fontWeight: '700', color: esp32Online ? C.success : C.danger }}>
+                {esp32Online ? 'Online' : 'Offline'}
+              </Text>
+            </View>
+
             <TouchableOpacity
               onPress={() => setWifiModal(true)}
               style={{ width: 42, height: 42, backgroundColor: C.card, borderRadius: 12, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}
@@ -119,7 +180,7 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* Cycle Control */}
+        {/* ── Cycle Control ── */}
         <View style={card}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <Text style={{ fontSize: 15, fontWeight: '700', color: C.text }}>Filtration Cycle</Text>
@@ -145,11 +206,7 @@ export default function DashboardScreen() {
           </View>
 
           <TouchableOpacity
-            style={{
-              flexDirection: 'row', backgroundColor: C.primary,
-              borderRadius: 14, paddingVertical: 14, alignItems: 'center',
-              justifyContent: 'center', gap: 8, marginTop: 8,
-            }}
+            style={{ flexDirection: 'row', backgroundColor: C.primary, borderRadius: 14, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 8 }}
             onPress={cycleRunning ? pauseCycle : startCycle}
             disabled={loading}
           >
@@ -160,7 +217,7 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Sensor Readings */}
+        {/* ── Sensor Readings ── */}
         <Text style={{ fontSize: 13, fontWeight: '700', color: C.muted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
           Live Sensor Data
         </Text>
@@ -170,7 +227,7 @@ export default function DashboardScreen() {
           <SensorCard icon="beaker" label="TDS" value={tds} unit="ppm" color={tdsColor} C={C} />
         </View>
 
-        {/* Filter Health */}
+        {/* ── Filter Health ── */}
         <View style={card}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -184,30 +241,31 @@ export default function DashboardScreen() {
             </View>
             <Text style={{ fontSize: 22, fontWeight: '800', color: filterBarColor }}>{filterHealthPct}%</Text>
           </View>
-
           <View style={{ height: 8, backgroundColor: C.border, borderRadius: 8, overflow: 'hidden' }}>
             <View style={{ height: '100%', width: `${filterHealthPct}%`, backgroundColor: filterBarColor, borderRadius: 8 }} />
           </View>
           <Text style={{ color: C.muted, fontSize: 12, marginTop: 8 }}>{filterCycleCount} cycles used</Text>
-
           {filterHealthPct <= 20 && (
             <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: C.alertBg, padding: 12, borderRadius: 12, marginTop: 12, gap: 8, borderWidth: 1, borderColor: C.danger + '40' }}>
               <Ionicons name="warning" size={16} color={C.warning} />
-              <Text style={{ color: C.warning, fontSize: 13, flex: 1, fontWeight: '500' }}>
-                Filter replacement recommended soon.
-              </Text>
+              <Text style={{ color: C.warning, fontSize: 13, flex: 1, fontWeight: '500' }}>Filter replacement recommended soon.</Text>
             </View>
           )}
         </View>
 
       </ScrollView>
 
-      {/* WiFi Config Modal */}
+      {/* ── WiFi Modal (Android-style network list) ── */}
       <Modal visible={wifiModal} animationType="slide" transparent onRequestClose={() => setWifiModal(false)}>
         <View style={{ flex: 1, backgroundColor: C.modalOverlay, justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, borderWidth: 1, borderColor: C.border }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Text style={{ fontSize: 18, fontWeight: '800', color: C.text }}>ESP32 WiFi Settings</Text>
+          <View style={{ backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, borderColor: C.border, maxHeight: '85%' }}>
+
+            {/* Modal Header */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, paddingBottom: 12 }}>
+              <View>
+                <Text style={{ fontSize: 18, fontWeight: '800', color: C.text }}>ESP32 WiFi</Text>
+                <Text style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>Select a network to connect</Text>
+              </View>
               <TouchableOpacity
                 onPress={() => setWifiModal(false)}
                 style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: C.inputBg, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}
@@ -215,40 +273,126 @@ export default function DashboardScreen() {
                 <Ionicons name="close" size={18} color={C.muted} />
               </TouchableOpacity>
             </View>
-            <Text style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>
-              Update the WiFi network your ESP32 connects to.
-            </Text>
 
-            <Text style={{ color: C.muted, fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>WiFi Name (SSID)</Text>
-            <TextInput
-              style={{ backgroundColor: C.inputBg, borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, color: C.text, fontSize: 15, marginBottom: 14 }}
-              placeholder="Enter WiFi name"
-              placeholderTextColor={C.muted}
-              value={wifiForm.ssid}
-              onChangeText={(v) => setWifiForm((f) => ({ ...f, ssid: v }))}
-              autoCapitalize="none"
-            />
+            {/* Scan Button */}
+            <View style={{ paddingHorizontal: 24, marginBottom: 8 }}>
+              <TouchableOpacity
+                onPress={handleScan}
+                disabled={scanning}
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: C.inputBg, borderRadius: 12, paddingVertical: 12, borderWidth: 1, borderColor: C.border }}
+              >
+                {scanning
+                  ? <ActivityIndicator size="small" color={C.primary} />
+                  : <Ionicons name="search" size={16} color={C.primary} />}
+                <Text style={{ color: C.primary, fontWeight: '700', fontSize: 14 }}>
+                  {scanning ? 'Scanning...' : 'Scan for Networks'}
+                </Text>
+              </TouchableOpacity>
+            </View>
 
-            <Text style={{ color: C.muted, fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Password</Text>
-            <TextInput
-              style={{ backgroundColor: C.inputBg, borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, color: C.text, fontSize: 15, marginBottom: 20 }}
-              placeholder="Enter WiFi password"
-              placeholderTextColor={C.muted}
-              value={wifiForm.password}
-              onChangeText={(v) => setWifiForm((f) => ({ ...f, password: v }))}
-              secureTextEntry
-              autoCapitalize="none"
-            />
+            {/* Network List */}
+            {networks.length > 0 && (
+              <FlatList
+                data={networks}
+                keyExtractor={(item, i) => item.ssid + i}
+                style={{ maxHeight: 260, paddingHorizontal: 24 }}
+                ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: C.border }} />}
+                renderItem={({ item }) => {
+                  const isSelected = selectedNet?.ssid === item.ssid;
+                  return (
+                    <TouchableOpacity
+                      onPress={() => { setSelectedNet(item); setPassword(''); }}
+                      style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 14, gap: 14 }}
+                    >
+                      <Ionicons name={signalIcon(item.rssi)} size={20} color={isSelected ? C.primary : C.muted} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: isSelected ? C.primary : C.text, fontWeight: isSelected ? '700' : '500', fontSize: 15 }}>
+                          {item.ssid}
+                        </Text>
+                        <Text style={{ color: C.muted, fontSize: 11, marginTop: 2 }}>
+                          {item.open ? 'Open' : 'Secured'} · {item.rssi} dBm
+                        </Text>
+                      </View>
+                      {item.open
+                        ? <Ionicons name="lock-open-outline" size={16} color={C.muted} />
+                        : <Ionicons name="lock-closed-outline" size={16} color={C.muted} />}
+                      {isSelected && <Ionicons name="checkmark-circle" size={20} color={C.primary} />}
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            )}
 
-            <TouchableOpacity
-              style={{ backgroundColor: C.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center' }}
-              onPress={handleWifiUpdate}
-              disabled={wifiLoading}
-            >
-              {wifiLoading
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>Update ESP32 WiFi</Text>}
-            </TouchableOpacity>
+            {/* Password + Connect (shown when network is selected and secured) */}
+            {selectedNet && !selectedNet.open && (
+              <View style={{ paddingHorizontal: 24, marginTop: 8 }}>
+                <Text style={{ color: C.muted, fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+                  Password for "{selectedNet.ssid}"
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: C.inputBg, borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 16, marginBottom: 14 }}>
+                  <TextInput
+                    style={{ flex: 1, paddingVertical: 14, color: C.text, fontSize: 15 }}
+                    placeholder="Enter password"
+                    placeholderTextColor={C.muted}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPass}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity onPress={() => setShowPass(!showPass)}>
+                    <Ionicons name={showPass ? 'eye-off-outline' : 'eye-outline'} size={20} color={C.muted} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Manual SSID fallback */}
+            {networks.length === 0 && !scanning && (
+              <View style={{ paddingHorizontal: 24, marginTop: 4 }}>
+                <Text style={{ color: C.muted, fontSize: 12, textAlign: 'center', marginBottom: 12 }}>
+                  Or enter WiFi name manually
+                </Text>
+                <TextInput
+                  style={{ backgroundColor: C.inputBg, borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, color: C.text, fontSize: 15, marginBottom: 10 }}
+                  placeholder="WiFi Name (SSID)"
+                  placeholderTextColor={C.muted}
+                  onChangeText={(v) => setSelectedNet({ ssid: v, open: false })}
+                  autoCapitalize="none"
+                />
+                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: C.inputBg, borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 16, marginBottom: 14 }}>
+                  <TextInput
+                    style={{ flex: 1, paddingVertical: 14, color: C.text, fontSize: 15 }}
+                    placeholder="Password"
+                    placeholderTextColor={C.muted}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPass}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity onPress={() => setShowPass(!showPass)}>
+                    <Ionicons name={showPass ? 'eye-off-outline' : 'eye-outline'} size={20} color={C.muted} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Connect Button */}
+            {selectedNet?.ssid && (
+              <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
+                <TouchableOpacity
+                  style={{ backgroundColor: C.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center' }}
+                  onPress={handleConnect}
+                  disabled={wifiLoading}
+                >
+                  {wifiLoading
+                    ? <ActivityIndicator color="#fff" />
+                    : <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>
+                        Connect to "{selectedNet.ssid}"
+                      </Text>}
+                </TouchableOpacity>
+              </View>
+            )}
+
           </View>
         </View>
       </Modal>
